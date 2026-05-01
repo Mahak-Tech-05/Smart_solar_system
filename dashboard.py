@@ -106,7 +106,7 @@ def toggle_theme():
 refresh_btn = tk.Button(
     top_controls,
     text="Refresh",
-    command=lambda: update_dashboard(force=True),
+    command=lambda: update_dashboard(manual=True),
     bg=c("secondary"),
     fg="white",
     relief="flat",
@@ -276,7 +276,13 @@ def on_resize(_event):
     apply_responsive_layout()
 
 # ---------- UPDATE ----------
-def update_dashboard(force=False):
+update_job = {"id": None}
+
+def update_dashboard(manual=False):
+    if manual and update_job["id"] is not None:
+        root.after_cancel(update_job["id"])
+        update_job["id"] = None
+
     df = load_data()
 
     if not df.empty:
@@ -316,7 +322,7 @@ def update_dashboard(force=False):
         canvas_v.draw()
         canvas_t.draw()
 
-    root.after(2000, update_dashboard)
+    update_job["id"] = root.after(2000, update_dashboard)
 
 apply_theme()
 root.bind("<Configure>", on_resize)

@@ -27,6 +27,7 @@ root.geometry("1280x820")
 root.minsize(920, 640)
 root.configure(bg="#0b1220")
 
+# ---------- THEME ----------
  ---------- THEME ----------
 theme_mode = {"name": "dark"}
 
@@ -75,6 +76,13 @@ root.option_add("*Font", "Inter 10")
 main = tk.Frame(root, bg=c("bg_main"))
 main.pack(fill="both", expand=True, padx=20, pady=20)
 main.grid_columnconfigure(0, weight=1)
+main.grid_rowconfigure(2, weight=1)
+main.grid_rowconfigure(3, weight=1)
+
+# NOTE:
+# All direct children of `main` must use `.grid(...)` only.
+# Mixing `.pack(...)` and `.grid(...)` in the same parent frame causes:
+# "_tkinter.TclError: cannot use geometry manager pack inside ...".
 main.grid_rowconfigure(3, weight=1)
 
 # ---------- HEADER ----------
@@ -199,6 +207,12 @@ graph_frame = tk.Frame(main, bg=c("bg_main"))
 graph_frame.grid(row=2, column=0, sticky="nsew", pady=(0, 24))
 graph_frame.columnconfigure(0, weight=1)
 graph_frame.columnconfigure(1, weight=1)
+
+voltage_card = tk.Frame(graph_frame, bg=c("card_bg"), padx=16, pady=16)
+temp_card_plot = tk.Frame(graph_frame, bg=c("card_bg"), padx=16, pady=16)
+voltage_card.grid(row=0, column=0, padx=(0, 8), sticky="nsew")
+temp_card_plot.grid(row=0, column=1, padx=(8, 0), sticky="nsew")
+
 graph_frame.pack(fill="x", pady=(0, 24))
 graph_frame.columnconfigure((0, 1), weight=1)
 

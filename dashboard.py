@@ -4,424 +4,157 @@ import sqlite3
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import warnings
-
-# 🔇 Remove warnings
-warnings.filterwarnings("ignore")
 
 # ---------- DATABASE ----------
 conn = sqlite3.connect('solar_data.db')
 
-
 def load_data():
     query = "SELECT * FROM solar_data ORDER BY id DESC LIMIT 50"
     df = pd.read_sql_query(query, conn)
-    df = df[::-1]
-    return df
-
+    return df[::-1]
 
 # ---------- WINDOW ----------
 root = tk.Tk()
 root.title("Smart Solar Dashboard")
 root.geometry("1280x820")
-root.minsize(920, 640)
-root.configure(bg="#0b1220")
 
-# ---------- THEME ----------
- ---------- THEME ----------
-theme_mode = {"name": "dark"}
+# ---------- SCROLLABLE MAIN ----------
+container = tk.Frame(root)
+container.pack(fill="both", expand=True)
 
-THEMES = {
-    "dark": {
-        "bg_main": "#0b1220",
-        "bg_alt": "#0f172a",
-        "card_bg": "#132033",
-        "card_glow": "#1d3150",
-        "accent": "#22d3ee",
-        "secondary": "#3b82f6",
-        "success": "#10b981",
-        "warning": "#f59e0b",
-        "text": "#f8fafc",
-        "subtext": "#94a3b8",
-        "table_row1": "#0f1b2f",
-        "table_row2": "#12213a",
-    },
-    "light": {
-        "bg_main": "#e8eef8",
-        "bg_alt": "#dbe7f5",
-        "card_bg": "#ffffff",
-        "card_glow": "#c6d8f2",
-        "accent": "#0284c7",
-        "secondary": "#2563eb",
-        "success": "#059669",
-        "warning": "#d97706",
-        "text": "#0f172a",
-        "subtext": "#334155",
-        "table_row1": "#eff6ff",
-        "table_row2": "#dbeafe",
-    },
-}
+canvas = tk.Canvas(container)
+scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
 
+scrollable_frame = tk.Frame(canvas)
 
-def c(name):
-    return THEMES[theme_mode["name"]][name]
+scrollable_frame.bind(
+    "<Configure>",
+    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+)
 
+canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+canvas.configure(yscrollcommand=scrollbar.set)
 
-def c(name):
-    return THEMES[theme_mode["name"]][name]
+canvas.pack(side="left", fill="both", expand=True)
+scrollbar.pack(side="right", fill="y")
 
-root.option_add("*Font", "Inter 10")
+# ---------- MOUSE SCROLL ----------
+def enable_mouse_scroll(widget):
+    widget.bind_all("<MouseWheel>", lambda e: widget.yview_scroll(int(-1*(e.delta/120)), "units"))
+    widget.bind_all("<Button-4>", lambda e: widget.yview_scroll(-1, "units"))
+    widget.bind_all("<Button-5>", lambda e: widget.yview_scroll(1, "units"))
 
-# ---------- MAIN CONTAINER ----------
-main = tk.Frame(root, bg=c("bg_main"))
+enable_mouse_scroll(canvas)
+
+# ---------- MAIN ----------
+main = tk.Frame(scrollable_frame)
 main.pack(fill="both", expand=True, padx=20, pady=20)
-main.grid_columnconfigure(0, weight=1)
-main.grid_rowconfigure(2, weight=1)
-main.grid_rowconfigure(3, weight=1)
-
-# NOTE:
-# All direct children of `main` must use `.grid(...)` only.
-# Mixing `.pack(...)` and `.grid(...)` in the same parent frame causes:
-# "_tkinter.TclError: cannot use geometry manager pack inside ...".
-main.grid_rowconfigure(3, weight=1)
 
 # ---------- HEADER ----------
-header_frame = tk.Frame(main, bg=c("bg_main"))
-header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 24))
-
-title = tk.Label(
-    header_frame,
-    text="🌞 Smart Solar Tracking Dashboard",
-    font=("Inter", 28, "bold"),
-    fg=c("accent"),
-    bg=c("bg_main"),
-)
+title = tk.Label(main, text="🌞 Smart Solar Dashboard",
+                 font=("Arial", 26, "bold"))
 title.pack()
 
-subtitle = tk.Label(
-    header_frame,
-    text="Real-time Solar Monitoring System",
-    font=("Inter", 12),
-    fg=c("subtext"),
-    bg=c("bg_main"),
-)
-subtitle.pack(pady=(4, 8))
-
-top_controls = tk.Frame(header_frame, bg=c("bg_main"))
-top_controls.pack(fill="x", pady=(2, 0))
-
-live_indicator = tk.Label(
-    top_controls,
-    text="● Online",
-    fg=c("success"),
-    bg=c("bg_main"),
-    font=("Inter", 11, "bold"),
-)
-live_indicator.pack(side="left")
-
-
-def toggle_theme():
-    theme_mode["name"] = "light" if theme_mode["name"] == "dark" else "dark"
-    apply_theme()
-
-
-refresh_btn = tk.Button(
-    top_controls,
-    text="Refresh",
-    command=lambda: update_dashboard(manual=True),
-    bg=c("secondary"),
-    fg="white",
-    relief="flat",
-    padx=12,
-    pady=6,
-)
-refresh_btn.pack(side="right", padx=(8, 0))
-
-theme_btn = tk.Button(
-    top_controls,
-    text="Dark/Light",
-    command=toggle_theme,
-    bg=c("card_bg"),
-    fg=c("text"),
-    relief="flat",
-    padx=12,
-    pady=6,
-)
-theme_btn.pack(side="right")
-
 # ---------- CARDS ----------
-card_frame = tk.Frame(main, bg=c("bg_main"))
-card_frame.grid(row=1, column=0, sticky="ew", pady=(0, 24))
+card_frame = tk.Frame(main)
+card_frame.pack(fill="x", pady=20)
 
+def create_card(title):
+    frame = tk.Frame(card_frame, bg="#222", padx=20, pady=20)
+    label = tk.Label(frame, text=title, fg="white", bg="#222")
+    label.pack()
+    value = tk.Label(frame, text="--", fg="cyan", bg="#222",
+                     font=("Arial", 20, "bold"))
+    value.pack()
+    frame.pack(side="left", expand=True, fill="both", padx=10)
+    return value
 
-def add_hover_effect(frame, base_bg, glow_bg):
-    def on_enter(_):
-        frame.configure(bg=glow_bg)
-
-    def on_leave(_):
-        frame.configure(bg=base_bg)
-
-    frame.bind("<Enter>", on_enter)
-    frame.bind("<Leave>", on_leave)
-
-
-def create_card(parent, icon, title_text, unit, color_key):
-    outer = tk.Frame(parent, bg=c("card_bg"), padx=2, pady=2)
-    inner = tk.Frame(outer, bg=c("card_bg"), padx=20, pady=18)
-    inner.pack(fill="both", expand=True)
-
-    top = tk.Frame(inner, bg=c("card_bg"))
-    top.pack(fill="x")
-    tk.Label(
-        top,
-        text=f"{icon}  {title_text}",
-        fg=c("subtext"),
-        bg=c("card_bg"),
-        font=("Inter", 11, "bold"),
-    ).pack(side="left")
-    tk.Label(top, text=unit, fg=c(color_key), bg=c("card_bg"), font=("Inter", 10)).pack(
-        side="right"
-    )
-
-    value_label = tk.Label(
-        inner, text="--", fg=c("text"), bg=c("card_bg"), font=("Inter", 24, "bold")
-    )
-    value_label.pack(anchor="w", pady=(10, 0))
-    add_hover_effect(outer, c("card_bg"), c("card_glow"))
-    return outer, inner, value_label
-
-
-ldr_card, ldr_inner, ldr_val = create_card(card_frame, "☀️", "LDR", "LEFT | RIGHT", "accent")
-temp_card, temp_inner, temp_val = create_card(
-    card_frame, "🌡️", "Temperature", "°C", "warning"
-)
-volt_card, volt_inner, volt_val = create_card(card_frame, "⚡", "Voltage", "V", "success")
-
-card_frame.columnconfigure((0, 1, 2), weight=1)
-ldr_card.grid(row=0, column=0, padx=8, sticky="ew")
-temp_card.grid(row=0, column=1, padx=8, sticky="ew")
-volt_card.grid(row=0, column=2, padx=8, sticky="ew")
+ldr_val = create_card("LDR (L | R)")
+temp_val = create_card("Temperature °C")
+volt_val = create_card("Voltage V")
 
 # ---------- GRAPH ----------
-graph_frame = tk.Frame(main, bg=c("bg_main"))
-graph_frame.grid(row=2, column=0, sticky="nsew", pady=(0, 24))
-graph_frame.columnconfigure(0, weight=1)
-graph_frame.columnconfigure(1, weight=1)
+graph_frame = tk.Frame(main)
+graph_frame.pack(fill="both", expand=True)
 
-voltage_card = tk.Frame(graph_frame, bg=c("card_bg"), padx=16, pady=16)
-temp_card_plot = tk.Frame(graph_frame, bg=c("card_bg"), padx=16, pady=16)
-voltage_card.grid(row=0, column=0, padx=(0, 8), sticky="nsew")
-temp_card_plot.grid(row=0, column=1, padx=(8, 0), sticky="nsew")
+fig_v, ax_v = plt.subplots()
+fig_t, ax_t = plt.subplots()
 
-graph_frame.pack(fill="x", pady=(0, 24))
-graph_frame.columnconfigure((0, 1), weight=1)
+canvas_v = FigureCanvasTkAgg(fig_v, master=graph_frame)
+canvas_v.get_tk_widget().pack(side="left", fill="both", expand=True)
 
-voltage_card = tk.Frame(graph_frame, bg=c("card_bg"), padx=16, pady=16)
-temp_card_plot = tk.Frame(graph_frame, bg=c("card_bg"), padx=16, pady=16)
-voltage_card.grid(row=0, column=0, padx=(0, 8), sticky="nsew")
-temp_card_plot.grid(row=0, column=1, padx=(8, 0), sticky="nsew")
-
-fig_v, ax_v = plt.subplots(figsize=(5, 2.6))
-fig_t, ax_t = plt.subplots(figsize=(5, 2.6))
-canvas_v = FigureCanvasTkAgg(fig_v, master=voltage_card)
-canvas_t = FigureCanvasTkAgg(fig_t, master=temp_card_plot)
-canvas_v.get_tk_widget().pack(fill="both", expand=True)
-canvas_t.get_tk_widget().pack(fill="both", expand=True)
+canvas_t = FigureCanvasTkAgg(fig_t, master=graph_frame)
+canvas_t.get_tk_widget().pack(side="left", fill="both", expand=True)
 
 # ---------- TABLE ----------
-table_outer = tk.Frame(main, bg=c("card_bg"), padx=16, pady=16)
-table_outer.grid(row=3, column=0, sticky="nsew")
-table_header = tk.Label(
-    table_outer,
-    text="Recent Sensor Data",
-    font=("Inter", 12, "bold"),
-    fg=c("text"),
-    bg=c("card_bg"),
-)
-table_header.pack(anchor="w", pady=(0, 10))
+table_frame = tk.Frame(main)
+table_frame.pack(fill="both", expand=True, pady=10)
 
-table_frame = tk.Frame(table_outer, bg=c("card_bg"))
-table_frame.pack(fill="both", expand=True)
-tree = ttk.Treeview(
-    table_frame, columns=("Time", "L", "R", "Temp", "Volt"), show="headings", height=10
+scroll_y = tk.Scrollbar(table_frame, orient="vertical")
+scroll_x = tk.Scrollbar(table_frame, orient="horizontal")
+
+table = ttk.Treeview(
+    table_frame,
+    columns=("Time","L","R","Temp","Volt"),
+    show="headings",
+    yscrollcommand=scroll_y.set,
+    xscrollcommand=scroll_x.set
 )
-scroll = ttk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
-tree.configure(yscroll=scroll.set)
-scroll.pack(side="right", fill="y")
-tree.pack(fill="both", expand=True)
+
+scroll_y.config(command=table.yview)
+scroll_x.config(command=table.xview)
+
+scroll_y.pack(side="right", fill="y")
+scroll_x.pack(side="bottom", fill="x")
+table.pack(fill="both", expand=True)
 
 columns = ("Time", "LDR Left", "LDR Right", "Temperature", "Voltage")
-for key, col in zip(("Time", "L", "R", "Temp", "Volt"), columns):
-    tree.heading(key, text=col)
-    tree.column(key, anchor="center", width=120)
-tree.column("Time", width=220)
-tree.column("L", width=140)
-tree.column("R", width=140)
-tree.column("Temp", width=130)
-tree.column("Volt", width=120)
+for key, col in zip(("Time","L","R","Temp","Volt"), columns):
+    table.heading(key, text=col)
+    table.column(key, anchor="center", width=120)
 
-style = ttk.Style()
-
-
-def apply_theme():
-    root.configure(bg=c("bg_main"))
-    main.configure(bg=c("bg_main"))
-    header_frame.configure(bg=c("bg_main"))
-    title.configure(bg=c("bg_main"), fg=c("accent"))
-    subtitle.configure(bg=c("bg_main"), fg=c("subtext"))
-    top_controls.configure(bg=c("bg_main"))
-    live_indicator.configure(bg=c("bg_main"), fg=c("success"))
-    card_frame.configure(bg=c("bg_main"))
-    for frame in (
-        ldr_card,
-        temp_card,
-        volt_card,
-        ldr_inner,
-        temp_inner,
-        volt_inner,
-        voltage_card,
-        temp_card_plot,
-        table_outer,
-        table_frame,
-    ):
-        frame.configure(bg=c("card_bg"))
-    table_header.configure(bg=c("card_bg"), fg=c("text"))
-    graph_frame.configure(bg=c("bg_main"))
-    refresh_btn.configure(bg=c("secondary"), fg="white")
-    theme_btn.configure(bg=c("card_bg"), fg=c("text"))
-
-    for fig, ax in ((fig_v, ax_v), (fig_t, ax_t)):
-        fig.patch.set_facecolor(c("card_bg"))
-        ax.set_facecolor(c("card_bg"))
-        ax.tick_params(colors=c("subtext"))
-        for s in ax.spines.values():
-            s.set_color(c("subtext"))
-
-    style.configure(
-        "Treeview",
-        background=c("table_row1"),
-        fieldbackground=c("table_row1"),
-        foreground=c("text"),
-        rowheight=30,
-        borderwidth=0,
-    )
-    style.configure(
-        "Treeview.Heading",
-        background=c("bg_alt"),
-        foreground=c("accent"),
-        font=("Inter", 10, "bold"),
-    )
-    style.map("Treeview", background=[("selected", c("secondary"))])
-    tree.tag_configure("odd", background=c("table_row1"))
-    tree.tag_configure("even", background=c("table_row2"))
-
-
-def apply_responsive_layout():
-    width = root.winfo_width()
-
-    if width < 1050:
-        for i, card in enumerate((ldr_card, temp_card, volt_card)):
-            card.grid_configure(row=i, column=0, padx=0, pady=6, sticky="ew")
-        card_frame.columnconfigure(0, weight=1)
-        for col in (1, 2):
-            card_frame.columnconfigure(col, weight=0)
-    else:
-        card_frame.columnconfigure((0, 1, 2), weight=1)
-        ldr_card.grid_configure(row=0, column=0, padx=8, pady=0, sticky="ew")
-        temp_card.grid_configure(row=0, column=1, padx=8, pady=0, sticky="ew")
-        volt_card.grid_configure(row=0, column=2, padx=8, pady=0, sticky="ew")
-
-    if width < 1180:
-        voltage_card.grid_configure(row=0, column=0, padx=0, pady=(0, 12), sticky="nsew")
-        temp_card_plot.grid_configure(row=1, column=0, padx=0, pady=0, sticky="nsew")
-        graph_frame.columnconfigure(1, weight=0)
-        graph_frame.rowconfigure((0, 1), weight=1)
-    else:
-        voltage_card.grid_configure(row=0, column=0, padx=(0, 8), pady=0, sticky="nsew")
-        temp_card_plot.grid_configure(row=0, column=1, padx=(8, 0), pady=0, sticky="nsew")
-        graph_frame.columnconfigure(1, weight=1)
-        graph_frame.rowconfigure(1, weight=0)
-
-    table_width = max(table_frame.winfo_width(), width - 100)
-    tree.column("Time", width=max(220, int(table_width * 0.32)))
-    tree.column("L", width=max(110, int(table_width * 0.17)))
-    tree.column("R", width=max(110, int(table_width * 0.17)))
-    tree.column("Temp", width=max(120, int(table_width * 0.17)))
-    tree.column("Volt", width=max(100, int(table_width * 0.14)))
-
-
-def on_resize(_event):
-    apply_responsive_layout()
-
+table.column("Time", width=220)
 
 # ---------- UPDATE ----------
-update_job = {"id": None}
-
-
-def update_dashboard(manual=False):
-    if manual and update_job["id"] is not None:
-        root.after_cancel(update_job["id"])
-        update_job["id"] = None
-
+def update_dashboard():
     df = load_data()
 
     if not df.empty:
         latest = df.iloc[-1]
 
         ldr_val.config(text=f"{latest['ldr_left']} | {latest['ldr_right']}")
-        temp_val.config(text=f"{latest['temperature']:.2f} °C")
-        volt_val.config(text=f"{latest['voltage']:.2f} V")
+        temp_val.config(text=f"{latest['temperature']:.2f}")
+        volt_val.config(text=f"{latest['voltage']:.2f}")
 
-        for row in tree.get_children():
-            tree.delete(row)
+        # Clear table
+        for row in table.get_children():
+            table.delete(row)
 
-        for i, (_, row) in enumerate(df.iterrows()):
-            tree.insert(
-                "",
-                "end",
-                values=(
-                    row["timestamp"],
-                    row["ldr_left"],
-                    row["ldr_right"],
-                    round(row["temperature"], 2),
-                    round(row["voltage"], 2),
-                ),
-                tags=("even" if i % 2 == 0 else "odd",),
-            )
-
-        ax_v.clear()
-        ax_t.clear()
-        ax_v.plot(df["voltage"], color=c("accent"), linewidth=2.2)
-        ax_t.plot(df["temperature"], color=c("success"), linewidth=2.2)
-            tree.insert("", "end", values=(
-                row['timestamp'],
-                row['ldr_left'],
-                row['ldr_right'],
-                round(row['temperature'], 2),
-                round(row['voltage'], 2)
-            ), tags=("even" if i % 2 == 0 else "odd",))
+        # Insert data
+        for _, row in df.iterrows():
+            table.insert("", "end", values=(
+                row["timestamp"],
+                row["ldr_left"],
+                row["ldr_right"],
+                round(row["temperature"],2),
+                round(row["voltage"],2)
+            ))
 
         # Graph update
         ax_v.clear()
         ax_t.clear()
-        ax_v.plot(df['voltage'], color=c("accent"), linewidth=2.2)
-        ax_t.plot(df['temperature'], color=c("success"), linewidth=2.2)
-        ax_v.grid(color=c("subtext"), alpha=0.2, linestyle="--")
-        ax_t.grid(color=c("subtext"), alpha=0.2, linestyle="--")
-        ax_v.set_title("Voltage Trend", color=c("text"), fontsize=11, pad=8)
-        ax_t.set_title("Temperature Trend", color=c("text"), fontsize=11, pad=8)
-        ax_v.tick_params(colors=c("subtext"))
-        ax_t.tick_params(colors=c("subtext"))
-        fig_v.tight_layout()
-        fig_t.tight_layout()
+
+        ax_v.plot(df["voltage"])
+        ax_v.set_title("Voltage")
+
+        ax_t.plot(df["temperature"])
+        ax_t.set_title("Temperature")
+
         canvas_v.draw()
         canvas_t.draw()
 
-    update_job["id"] = root.after(2000, update_dashboard)
+    root.after(2000, update_dashboard)
 
-
-apply_theme()
-root.bind("<Configure>", on_resize)
-root.after(200, apply_responsive_layout)
+# ---------- START ----------
 update_dashboard()
 root.mainloop()

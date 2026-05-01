@@ -12,19 +12,22 @@ warnings.filterwarnings("ignore")
 # ---------- DATABASE ----------
 conn = sqlite3.connect('solar_data.db')
 
+
 def load_data():
     query = "SELECT * FROM solar_data ORDER BY id DESC LIMIT 50"
     df = pd.read_sql_query(query, conn)
     df = df[::-1]
     return df
 
+
 # ---------- WINDOW ----------
 root = tk.Tk()
 root.title("Smart Solar Dashboard")
 root.geometry("1280x820")
+root.minsize(920, 640)
 root.configure(bg="#0b1220")
 
-# ---------- THEME ----------
+ ---------- THEME ----------
 theme_mode = {"name": "dark"}
 
 THEMES = {
@@ -58,6 +61,11 @@ THEMES = {
     },
 }
 
+
+def c(name):
+    return THEMES[theme_mode["name"]][name]
+
+
 def c(name):
     return THEMES[theme_mode["name"]][name]
 
@@ -66,10 +74,12 @@ root.option_add("*Font", "Inter 10")
 # ---------- MAIN CONTAINER ----------
 main = tk.Frame(root, bg=c("bg_main"))
 main.pack(fill="both", expand=True, padx=20, pady=20)
+main.grid_columnconfigure(0, weight=1)
+main.grid_rowconfigure(3, weight=1)
 
 # ---------- HEADER ----------
 header_frame = tk.Frame(main, bg=c("bg_main"))
-header_frame.pack(fill="x", pady=(0, 24))
+header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 24))
 
 title = tk.Label(
     header_frame,
@@ -93,18 +103,24 @@ top_controls = tk.Frame(header_frame, bg=c("bg_main"))
 top_controls.pack(fill="x", pady=(2, 0))
 
 live_indicator = tk.Label(
-    top_controls, text="● Online", fg=c("success"), bg=c("bg_main"), font=("Inter", 11, "bold")
+    top_controls,
+    text="● Online",
+    fg=c("success"),
+    bg=c("bg_main"),
+    font=("Inter", 11, "bold"),
 )
 live_indicator.pack(side="left")
+
 
 def toggle_theme():
     theme_mode["name"] = "light" if theme_mode["name"] == "dark" else "dark"
     apply_theme()
 
+
 refresh_btn = tk.Button(
     top_controls,
     text="Refresh",
-    command=lambda: update_dashboard(force=True),
+    command=lambda: update_dashboard(manual=True),
     bg=c("secondary"),
     fg="white",
     relief="flat",
@@ -127,33 +143,50 @@ theme_btn.pack(side="right")
 
 # ---------- CARDS ----------
 card_frame = tk.Frame(main, bg=c("bg_main"))
-card_frame.pack(fill="x", pady=(0, 24))
+card_frame.grid(row=1, column=0, sticky="ew", pady=(0, 24))
+
 
 def add_hover_effect(frame, base_bg, glow_bg):
     def on_enter(_):
         frame.configure(bg=glow_bg)
+
     def on_leave(_):
         frame.configure(bg=base_bg)
+
     frame.bind("<Enter>", on_enter)
     frame.bind("<Leave>", on_leave)
 
-def create_card(parent, icon, title, unit, color_key):
+
+def create_card(parent, icon, title_text, unit, color_key):
     outer = tk.Frame(parent, bg=c("card_bg"), padx=2, pady=2)
     inner = tk.Frame(outer, bg=c("card_bg"), padx=20, pady=18)
     inner.pack(fill="both", expand=True)
 
     top = tk.Frame(inner, bg=c("card_bg"))
     top.pack(fill="x")
-    tk.Label(top, text=f"{icon}  {title}", fg=c("subtext"), bg=c("card_bg"), font=("Inter", 11, "bold")).pack(side="left")
-    tk.Label(top, text=unit, fg=c(color_key), bg=c("card_bg"), font=("Inter", 10)).pack(side="right")
+    tk.Label(
+        top,
+        text=f"{icon}  {title_text}",
+        fg=c("subtext"),
+        bg=c("card_bg"),
+        font=("Inter", 11, "bold"),
+    ).pack(side="left")
+    tk.Label(top, text=unit, fg=c(color_key), bg=c("card_bg"), font=("Inter", 10)).pack(
+        side="right"
+    )
 
-    value_label = tk.Label(inner, text="--", fg=c("text"), bg=c("card_bg"), font=("Inter", 24, "bold"))
+    value_label = tk.Label(
+        inner, text="--", fg=c("text"), bg=c("card_bg"), font=("Inter", 24, "bold")
+    )
     value_label.pack(anchor="w", pady=(10, 0))
     add_hover_effect(outer, c("card_bg"), c("card_glow"))
     return outer, inner, value_label
 
+
 ldr_card, ldr_inner, ldr_val = create_card(card_frame, "☀️", "LDR", "LEFT | RIGHT", "accent")
-temp_card, temp_inner, temp_val = create_card(card_frame, "🌡️", "Temperature", "°C", "warning")
+temp_card, temp_inner, temp_val = create_card(
+    card_frame, "🌡️", "Temperature", "°C", "warning"
+)
 volt_card, volt_inner, volt_val = create_card(card_frame, "⚡", "Voltage", "V", "success")
 
 card_frame.columnconfigure((0, 1, 2), weight=1)
@@ -163,6 +196,9 @@ volt_card.grid(row=0, column=2, padx=8, sticky="ew")
 
 # ---------- GRAPH ----------
 graph_frame = tk.Frame(main, bg=c("bg_main"))
+graph_frame.grid(row=2, column=0, sticky="nsew", pady=(0, 24))
+graph_frame.columnconfigure(0, weight=1)
+graph_frame.columnconfigure(1, weight=1)
 graph_frame.pack(fill="x", pady=(0, 24))
 graph_frame.columnconfigure((0, 1), weight=1)
 
@@ -180,13 +216,21 @@ canvas_t.get_tk_widget().pack(fill="both", expand=True)
 
 # ---------- TABLE ----------
 table_outer = tk.Frame(main, bg=c("card_bg"), padx=16, pady=16)
-table_outer.pack(fill="both", expand=True)
-table_header = tk.Label(table_outer, text="Recent Sensor Data", font=("Inter", 12, "bold"), fg=c("text"), bg=c("card_bg"))
+table_outer.grid(row=3, column=0, sticky="nsew")
+table_header = tk.Label(
+    table_outer,
+    text="Recent Sensor Data",
+    font=("Inter", 12, "bold"),
+    fg=c("text"),
+    bg=c("card_bg"),
+)
 table_header.pack(anchor="w", pady=(0, 10))
 
 table_frame = tk.Frame(table_outer, bg=c("card_bg"))
 table_frame.pack(fill="both", expand=True)
-tree = ttk.Treeview(table_frame, columns=("Time", "L", "R", "Temp", "Volt"), show='headings', height=10)
+tree = ttk.Treeview(
+    table_frame, columns=("Time", "L", "R", "Temp", "Volt"), show="headings", height=10
+)
 scroll = ttk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
 tree.configure(yscroll=scroll.set)
 scroll.pack(side="right", fill="y")
@@ -197,8 +241,13 @@ for key, col in zip(("Time", "L", "R", "Temp", "Volt"), columns):
     tree.heading(key, text=col)
     tree.column(key, anchor="center", width=120)
 tree.column("Time", width=220)
+tree.column("L", width=140)
+tree.column("R", width=140)
+tree.column("Temp", width=130)
+tree.column("Volt", width=120)
 
 style = ttk.Style()
+
 
 def apply_theme():
     root.configure(bg=c("bg_main"))
@@ -209,7 +258,18 @@ def apply_theme():
     top_controls.configure(bg=c("bg_main"))
     live_indicator.configure(bg=c("bg_main"), fg=c("success"))
     card_frame.configure(bg=c("bg_main"))
-    for frame in (ldr_card, temp_card, volt_card, ldr_inner, temp_inner, volt_inner, voltage_card, temp_card_plot, table_outer, table_frame):
+    for frame in (
+        ldr_card,
+        temp_card,
+        volt_card,
+        ldr_inner,
+        temp_inner,
+        volt_inner,
+        voltage_card,
+        temp_card_plot,
+        table_outer,
+        table_frame,
+    ):
         frame.configure(bg=c("card_bg"))
     table_header.configure(bg=c("card_bg"), fg=c("text"))
     graph_frame.configure(bg=c("bg_main"))
@@ -222,29 +282,103 @@ def apply_theme():
         ax.tick_params(colors=c("subtext"))
         for s in ax.spines.values():
             s.set_color(c("subtext"))
-    style.configure("Treeview", background=c("table_row1"), fieldbackground=c("table_row1"), foreground=c("text"), rowheight=30, borderwidth=0)
-    style.configure("Treeview.Heading", background=c("bg_alt"), foreground=c("accent"), font=("Inter", 10, "bold"))
+
+    style.configure(
+        "Treeview",
+        background=c("table_row1"),
+        fieldbackground=c("table_row1"),
+        foreground=c("text"),
+        rowheight=30,
+        borderwidth=0,
+    )
+    style.configure(
+        "Treeview.Heading",
+        background=c("bg_alt"),
+        foreground=c("accent"),
+        font=("Inter", 10, "bold"),
+    )
     style.map("Treeview", background=[("selected", c("secondary"))])
     tree.tag_configure("odd", background=c("table_row1"))
     tree.tag_configure("even", background=c("table_row2"))
 
+
+def apply_responsive_layout():
+    width = root.winfo_width()
+
+    if width < 1050:
+        for i, card in enumerate((ldr_card, temp_card, volt_card)):
+            card.grid_configure(row=i, column=0, padx=0, pady=6, sticky="ew")
+        card_frame.columnconfigure(0, weight=1)
+        for col in (1, 2):
+            card_frame.columnconfigure(col, weight=0)
+    else:
+        card_frame.columnconfigure((0, 1, 2), weight=1)
+        ldr_card.grid_configure(row=0, column=0, padx=8, pady=0, sticky="ew")
+        temp_card.grid_configure(row=0, column=1, padx=8, pady=0, sticky="ew")
+        volt_card.grid_configure(row=0, column=2, padx=8, pady=0, sticky="ew")
+
+    if width < 1180:
+        voltage_card.grid_configure(row=0, column=0, padx=0, pady=(0, 12), sticky="nsew")
+        temp_card_plot.grid_configure(row=1, column=0, padx=0, pady=0, sticky="nsew")
+        graph_frame.columnconfigure(1, weight=0)
+        graph_frame.rowconfigure((0, 1), weight=1)
+    else:
+        voltage_card.grid_configure(row=0, column=0, padx=(0, 8), pady=0, sticky="nsew")
+        temp_card_plot.grid_configure(row=0, column=1, padx=(8, 0), pady=0, sticky="nsew")
+        graph_frame.columnconfigure(1, weight=1)
+        graph_frame.rowconfigure(1, weight=0)
+
+    table_width = max(table_frame.winfo_width(), width - 100)
+    tree.column("Time", width=max(220, int(table_width * 0.32)))
+    tree.column("L", width=max(110, int(table_width * 0.17)))
+    tree.column("R", width=max(110, int(table_width * 0.17)))
+    tree.column("Temp", width=max(120, int(table_width * 0.17)))
+    tree.column("Volt", width=max(100, int(table_width * 0.14)))
+
+
+def on_resize(_event):
+    apply_responsive_layout()
+
+
 # ---------- UPDATE ----------
-def update_dashboard(force=False):
+update_job = {"id": None}
+
+
+def update_dashboard(manual=False):
+    if manual and update_job["id"] is not None:
+        root.after_cancel(update_job["id"])
+        update_job["id"] = None
+
     df = load_data()
 
     if not df.empty:
         latest = df.iloc[-1]
 
-        # Update cards
         ldr_val.config(text=f"{latest['ldr_left']} | {latest['ldr_right']}")
         temp_val.config(text=f"{latest['temperature']:.2f} °C")
         volt_val.config(text=f"{latest['voltage']:.2f} V")
 
-        # Table update
         for row in tree.get_children():
             tree.delete(row)
 
         for i, (_, row) in enumerate(df.iterrows()):
+            tree.insert(
+                "",
+                "end",
+                values=(
+                    row["timestamp"],
+                    row["ldr_left"],
+                    row["ldr_right"],
+                    round(row["temperature"], 2),
+                    round(row["voltage"], 2),
+                ),
+                tags=("even" if i % 2 == 0 else "odd",),
+            )
+
+        ax_v.clear()
+        ax_t.clear()
+        ax_v.plot(df["voltage"], color=c("accent"), linewidth=2.2)
+        ax_t.plot(df["temperature"], color=c("success"), linewidth=2.2)
             tree.insert("", "end", values=(
                 row['timestamp'],
                 row['ldr_left'],
@@ -269,8 +403,11 @@ def update_dashboard(force=False):
         canvas_v.draw()
         canvas_t.draw()
 
-    root.after(2000, update_dashboard)
+    update_job["id"] = root.after(2000, update_dashboard)
+
 
 apply_theme()
+root.bind("<Configure>", on_resize)
+root.after(200, apply_responsive_layout)
 update_dashboard()
 root.mainloop()

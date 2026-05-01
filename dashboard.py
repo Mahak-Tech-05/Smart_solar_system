@@ -27,7 +27,7 @@ root.geometry("1280x820")
 root.minsize(920, 640)
 root.configure(bg="#0b1220")
 
-# ---------- THEME ----------
+ ---------- THEME ----------
 theme_mode = {"name": "dark"}
 
 THEMES = {
@@ -65,6 +65,9 @@ THEMES = {
 def c(name):
     return THEMES[theme_mode["name"]][name]
 
+
+def c(name):
+    return THEMES[theme_mode["name"]][name]
 
 root.option_add("*Font", "Inter 10")
 
@@ -196,6 +199,8 @@ graph_frame = tk.Frame(main, bg=c("bg_main"))
 graph_frame.grid(row=2, column=0, sticky="nsew", pady=(0, 24))
 graph_frame.columnconfigure(0, weight=1)
 graph_frame.columnconfigure(1, weight=1)
+graph_frame.pack(fill="x", pady=(0, 24))
+graph_frame.columnconfigure((0, 1), weight=1)
 
 voltage_card = tk.Frame(graph_frame, bg=c("card_bg"), padx=16, pady=16)
 temp_card_plot = tk.Frame(graph_frame, bg=c("card_bg"), padx=16, pady=16)
@@ -374,6 +379,19 @@ def update_dashboard(manual=False):
         ax_t.clear()
         ax_v.plot(df["voltage"], color=c("accent"), linewidth=2.2)
         ax_t.plot(df["temperature"], color=c("success"), linewidth=2.2)
+            tree.insert("", "end", values=(
+                row['timestamp'],
+                row['ldr_left'],
+                row['ldr_right'],
+                round(row['temperature'], 2),
+                round(row['voltage'], 2)
+            ), tags=("even" if i % 2 == 0 else "odd",))
+
+        # Graph update
+        ax_v.clear()
+        ax_t.clear()
+        ax_v.plot(df['voltage'], color=c("accent"), linewidth=2.2)
+        ax_t.plot(df['temperature'], color=c("success"), linewidth=2.2)
         ax_v.grid(color=c("subtext"), alpha=0.2, linestyle="--")
         ax_t.grid(color=c("subtext"), alpha=0.2, linestyle="--")
         ax_v.set_title("Voltage Trend", color=c("text"), fontsize=11, pad=8)
